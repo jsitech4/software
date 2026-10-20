@@ -1,0 +1,1 @@
+"""PFG Cravings application package."""
