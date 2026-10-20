@@ -1,0 +1,14 @@
+# Production reverse proxy for PFG Cravings. Set PFG_DOMAIN=pfgcravings.com
+# and CADDY_EMAIL in the service environment before starting Caddy.
+{
+    email {$CADDY_EMAIL}
+}
+
+{$PFG_DOMAIN:pfgcravings.com} {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8000
+}
+
+www.{$PFG_DOMAIN:pfgcravings.com} {
+    redir https://{$PFG_DOMAIN:pfgcravings.com}{uri} permanent
+}

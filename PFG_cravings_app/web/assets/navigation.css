@@ -1,0 +1,7 @@
+/* Header action alignment: keep the logout icon and label on one baseline. */
+.navlinks a,
+.navlinks button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
