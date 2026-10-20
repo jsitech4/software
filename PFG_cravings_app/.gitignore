@@ -1,8 +1,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
+# Environment secrets
 .env
+.env.*
+!.env.example
+
 PFG_CRAVINGS_DATA/
 *.db
 *.db-wal
