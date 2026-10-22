@@ -524,10 +524,10 @@ def edit_product(product_id:int,p:ProductUpdate,user=Depends(require_admin),db=D
     return {'ok':True}
 
 @app.post('/api/admin/products/{product_id}/image')
-async def upload_product_image(product_id:int,image:UploadFile=File(...),user=Depends(require_admin),db=Depends(get_db)):
+def upload_product_image(product_id:int,image:UploadFile=File(...),user=Depends(require_admin),db=Depends(get_db)):
     product=db.execute('SELECT image_filename FROM products WHERE id=? AND archived=0',(product_id,)).fetchone()
     if not product:raise HTTPException(404,'Product not found.')
-    data=await image.read(MAX_PRODUCT_IMAGE_BYTES+1)
+    data=image.file.read(MAX_PRODUCT_IMAGE_BYTES+1)
     if not data:raise HTTPException(422,'Choose an image to upload.')
     if len(data)>MAX_PRODUCT_IMAGE_BYTES:raise HTTPException(413,'Image must be 5 MB or smaller.')
     extension=product_image_extension(data)
@@ -543,7 +543,7 @@ async def upload_product_image(product_id:int,image:UploadFile=File(...),user=De
         raise HTTPException(500,'The image could not be saved. Please try again.') from exc
     finally:
         temporary.unlink(missing_ok=True)
-        await image.close()
+        image.file.close()
     remove_product_image(product['image_filename'])
     audit(db,'admin:'+str(user['id']),'product-image-uploaded','product',product_id)
     return {'ok':True,'image_url':f'/product-images/{filename}'}

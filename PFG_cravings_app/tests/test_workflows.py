@@ -1,5 +1,6 @@
 """API integration checks use an isolated temporary database."""
 import os
+import base64
 import tempfile
 import subprocess
 import sys
@@ -41,6 +42,17 @@ def run():
     product={'name':p['name'],'category_id':p['category_id'],'price_naira':'400.00','available':True}
     changed=client.patch(f'/api/admin/products/{p["id"]}',headers=h,json=product)
     assert changed.status_code==200,changed.text
+    image=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL9hwAAAABJRU5ErkJggg==')
+    uploaded=client.post(f'/api/admin/products/{p["id"]}/image',headers=h,files={'image':('cola.png',image,'image/png')})
+    assert uploaded.status_code==200,uploaded.text
+    image_url=uploaded.json()['image_url']
+    assert image_url.startswith('/product-images/')
+    assert client.get(image_url).status_code==200
+    refreshed=client.get('/api/public/bootstrap').json()['products']
+    assert next(product for product in refreshed if product['id']==p['id'])['image_url']==image_url
+    removed=client.delete(f'/api/admin/products/{p["id"]}/image',headers=h)
+    assert removed.status_code==200,removed.text
+    assert removed.json()['image_url']=='/assets/image-not-available.svg'
     assert client.post('/api/admin/sessions',headers=h,json={}).status_code==200
     request={'staff_id':sid,'pin':'0007','items':[{'product_id':p['id'],'quantity':2}],'notes':'Cold please','paid_claimed':True,'request_key':'stable-request-00000001'}
     bad=client.post('/api/public/orders',json={**request,'pin':'0008','request_key':'stable-000002'})
