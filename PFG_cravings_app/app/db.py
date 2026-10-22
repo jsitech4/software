@@ -102,6 +102,12 @@ def initialize():
         db.execute('CREATE UNIQUE INDEX idx_payment_ledger_request_key ON payment_ledger(request_key) WHERE request_key IS NOT NULL')
         from app.security import timestamp
         db.execute('INSERT INTO schema_migrations(version,applied_at) VALUES(?,?)',(5,timestamp()))
+    if not db.execute('SELECT 1 FROM schema_migrations WHERE version=6').fetchone():
+        # Keep the image reference with the product; files themselves live in
+        # the persistent data directory rather than inside the deployed source.
+        db.execute('ALTER TABLE products ADD COLUMN image_filename TEXT')
+        from app.security import timestamp
+        db.execute('INSERT INTO schema_migrations(version,applied_at) VALUES(?,?)',(6,timestamp()))
     for index,(category,names) in enumerate(SEED.items()):
         db.execute('INSERT OR IGNORE INTO categories(name,sort_order) VALUES (?,?)',(category,index))
         cat_id=db.execute('SELECT id FROM categories WHERE name=?',(category,)).fetchone()['id']

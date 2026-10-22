@@ -1,6 +1,7 @@
 /* PFG Cravings | Dependency-free, LAN-ready application client. */
 const app = document.querySelector("#app");
 const N = "/api";
+const PRODUCT_IMAGE_FALLBACK = "/assets/image-not-available.svg";
 const state = {
   bootstrap: null,
   admin: null,
@@ -183,6 +184,13 @@ function productOptions() {
   return (state.bootstrap?.products || []).filter(
     (p) => p.category === state.cat,
   );
+}
+function productImage(p, className = "") {
+  const source = p.image_url || PRODUCT_IMAGE_FALLBACK;
+  return `<img class="${className}" src="${escapeHTML(source)}" alt="${escapeHTML(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${PRODUCT_IMAGE_FALLBACK}'">`;
+}
+function productCard(p, session) {
+  return `<article class="product-card"><div class="product-image-wrap">${productImage(p, "product-image")}</div><div class="product-card-copy"><h3>${escapeHTML(p.name)}</h3><p>${p.price_kobo === null ? "Price pending" : money(p.price_kobo)}</p>${!p.available ? '<span class="tiny danger-text">Unavailable</span>' : ""}</div><div class="qty-controls"><button type="button" data-action="qty" data-id="${p.id}" data-delta="-1" ${!state.cart[p.id] ? "disabled" : ""} aria-label="Remove ${escapeHTML(p.name)}">−</button><strong>${state.cart[p.id] || 0}</strong><button type="button" data-action="qty" data-id="${p.id}" data-delta="1" ${p.price_kobo === null || !p.available || session.status !== "open" ? "disabled" : ""} aria-label="Add ${escapeHTML(p.name)}">+</button></div></article>`;
 }
 function catalogueCategories() {
   return (state.bootstrap?.categories || []).map((category) => category.name);
