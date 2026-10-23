@@ -1119,12 +1119,15 @@ tr:last-child td {
 .product-edit-row {
   display: grid;
   grid-template-columns:
-    154px minmax(150px, 1.5fr) minmax(120px, 1fr)
-    minmax(110px, 0.8fr) auto;
-  gap: 10px;
-  align-items: end;
+    minmax(145px, 154px)
+    minmax(150px, 1.5fr)
+    minmax(120px, 1fr)
+    minmax(110px, 0.8fr)
+    auto;
+  gap: 14px;
+  align-items: center;
   border-top: 1px solid var(--line);
-  padding: 15px 18px;
+  padding: 18px;
 }
 
 .staff-row {
@@ -1278,21 +1281,30 @@ tr:last-child td {
 
 .product-image-editor {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   align-self: stretch;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
 }
 
 .image-dropzone {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
-  min-height: 82px;
-  padding: 5px;
+  gap: 12px;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 96px;
+  padding: 9px 11px;
+
   border: 1px dashed #b5bed2;
-  border-radius: 9px;
+  border-radius: 10px;
   background: #fafbfe;
+
   cursor: pointer;
   transition:
     background 0.16s ease,
@@ -1309,25 +1321,30 @@ tr:last-child td {
   box-shadow: 0 0 0 3px #202b7617;
 }
 
-.admin-product-image {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
+.image-dropzone:focus-visible {
+  outline: 2px solid #5969bb;
+  outline-offset: 2px;
 }
 
 .image-dropzone .admin-product-image {
-  width: 70px;
-  height: 70px;
+  display: block;
+  width: 76px;
+  height: 76px;
+  min-width: 0;
   aspect-ratio: 1 / 1;
-  border-radius: 6px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+
+  border: 1px solid #e7eaf2;
+  border-radius: 8px;
   background: #edf0f7;
 }
 
 .image-dropzone span {
+  display: block;
   min-width: 0;
   overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .image-dropzone b,
@@ -1336,15 +1353,18 @@ tr:last-child td {
 }
 
 .image-dropzone b {
-  font-size: 12px;
+  margin: 0;
   color: #26345e;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
 }
 
 .image-dropzone small {
-  font-size: 10px;
-  line-height: 1.35;
+  margin-top: 4px;
   color: var(--muted);
-  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .image-file-input {
@@ -1361,16 +1381,112 @@ tr:last-child td {
 
 .remove-image {
   justify-self: start;
+  align-self: start;
+  margin: 0;
+  padding: 4px 2px;
   color: #8f3030;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.new-product-image {
+  width: 100%;
+  min-width: 0;
 }
 
 .new-product-image input {
+  width: 100%;
+  min-width: 0;
   padding: 8px;
   min-height: 42px;
 }
 
 .new-product-image small {
+  display: block;
+  margin-top: 4px;
   font-size: 10px;
+  line-height: 1.45;
+}
+
+/* Keep image editor aligned with the product row */
+
+.product-edit-row > * {
+  min-width: 0;
+}
+
+.product-edit-row .product-image-editor {
+  grid-column: auto;
+}
+
+/* Tablet: keep the image card within its own grid column */
+
+@media (max-width: 900px) {
+  .product-edit-row {
+    align-items: start;
+  }
+
+  .product-edit-row .product-image-editor {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .image-dropzone {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 86px;
+    padding: 8px;
+  }
+
+  .image-dropzone .admin-product-image {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+/* Phone: use a compact but consistent image card */
+
+@media (max-width: 700px) {
+  .product-edit-row {
+    gap: 14px;
+  }
+
+  .product-edit-row .product-image-editor {
+    width: 100%;
+  }
+
+  .image-dropzone {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 78px;
+    padding: 8px;
+    border-radius: 9px;
+  }
+
+  .image-dropzone .admin-product-image {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* Very narrow phones */
+
+@media (max-width: 440px) {
+  .product-edit-row {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .image-dropzone {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 82px;
+    padding: 8px 9px;
+  }
+
+  .image-dropzone .admin-product-image {
+    width: 64px;
+    height: 64px;
+  }
 }
 
 /* Editor product list */

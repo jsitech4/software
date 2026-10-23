@@ -147,7 +147,8 @@ async function api(path, { method = "GET", body } = {}) {
 }
 async function uploadProductImage(productId, file, refresh = true) {
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) throw Error("Image must be 5 MB or smaller.");
+  if (file.size > 5 * 1024 * 1024)
+    throw Error("Image must be 5 MB or smaller.");
   const form = new FormData();
   form.append("image", file);
   let response;
@@ -159,12 +160,15 @@ async function uploadProductImage(productId, file, refresh = true) {
       body: form,
     });
   } catch {
-    throw Error("Cannot reach the server. Check the office network connection.");
+    throw Error(
+      "Cannot reach the server. Check the office network connection.",
+    );
   }
   const result = await response
     .json()
     .catch(() => ({ detail: "Unexpected server response." }));
-  if (!response.ok) throw Error(result.detail || "Image upload could not be completed.");
+  if (!response.ok)
+    throw Error(result.detail || "Image upload could not be completed.");
   if (refresh) {
     toast("Product image saved.");
     await showAdmin();
@@ -325,7 +329,9 @@ function decorateAdminProductImages(root = app) {
   if (!products.length) return;
   root.querySelectorAll('[data-form="edit-product"]').forEach((form) => {
     if (form.querySelector(".product-image-editor")) return;
-    const product = products.find((item) => String(item.id) === form.dataset.id);
+    const product = products.find(
+      (item) => String(item.id) === form.dataset.id,
+    );
     if (!product) return;
     const editor = document.createElement("div");
     editor.className = "product-image-editor";
@@ -336,7 +342,8 @@ function decorateAdminProductImages(root = app) {
   if (addForm && !addForm.querySelector('[name="image"]')) {
     const field = document.createElement("div");
     field.className = "field new-product-image";
-    field.innerHTML = '<label>Product image <span class="muted">(optional)</span></label><input name="image" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP; maximum 5 MB.</small>';
+    field.innerHTML =
+      '<label>Product image <span class="muted">(optional)</span></label><input name="image" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP; maximum 5 MB.</small>';
     addForm.insertBefore(field, addForm.lastElementChild);
   }
 }
@@ -810,7 +817,12 @@ document.addEventListener("click", async (e) => {
       return;
     }
     if (act === "remove-product-image") {
-      if (!confirm("Remove this product image? The Image not available fallback will be shown.")) return;
+      if (
+        !confirm(
+          "Remove this product image? The Image not available fallback will be shown.",
+        )
+      )
+        return;
       await api("/admin/products/" + el.dataset.id + "/image", {
         method: "DELETE",
       });
@@ -1101,7 +1113,11 @@ document.addEventListener("submit", async (e) => {
       if (id === "add-product" && f.image instanceof File && f.image.size) {
         await uploadProductImage(saved.id, f.image, false);
       }
-      toast(id === "add-product" && f.image instanceof File && f.image.size ? "Product and image saved." : "Product saved.");
+      toast(
+        id === "add-product" && f.image instanceof File && f.image.size
+          ? "Product and image saved."
+          : "Product saved.",
+      );
       await showAdmin();
       return;
     }
