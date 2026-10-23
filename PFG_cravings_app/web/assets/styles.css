@@ -67,6 +67,8 @@ svg {
   flex-shrink: 0;
 }
 
+/* Brand and navigation */
+
 .brand-mark {
   width: 39px;
   height: 39px;
@@ -142,6 +144,8 @@ svg {
   text-decoration: none;
   color: var(--navy);
 }
+
+/* Page layout */
 
 .container {
   max-width: 1260px;
@@ -225,6 +229,7 @@ svg {
   grid-template-columns: minmax(0, 1.7fr) minmax(290px, 0.82fr);
   gap: 20px;
   align-items: start;
+  min-width: 0;
 }
 
 .panel-stack {
@@ -238,6 +243,8 @@ svg {
   top: 24px;
   min-width: 0;
 }
+
+/* Forms and fields */
 
 .field {
   display: flex;
@@ -486,67 +493,67 @@ svg {
 .products-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
   align-items: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 .product-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 116px;
-  grid-template-rows: auto auto;
   grid-template-areas:
     "details photo"
     "actions photo";
   align-items: center;
   align-content: center;
-  gap: 12px 14px;
+  gap: 10px 14px;
+  width: 100%;
   min-width: 0;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid #e8eaf0;
-  border-radius: 13px;
+  border-radius: 11px;
   background: #fff;
   box-shadow: 0 2px 7px rgba(24, 31, 99, 0.035);
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+  box-sizing: border-box;
 }
 
-.product-card:hover {
-  border-color: #cbd2e5;
-  box-shadow: 0 6px 18px rgba(24, 31, 99, 0.075);
-}
-
-.product-card-copy {
+.product-card-copy,
+.product-details {
   grid-area: details;
   min-width: 0;
-  align-self: end;
+  max-width: 100%;
+  align-self: center;
+  overflow-wrap: anywhere;
 }
 
-.product-card-copy h3 {
-  margin: 0 0 8px;
+.product-card-copy h3,
+.product-name {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 6px;
   color: #252b39;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 750;
   line-height: 1.4;
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
+  word-break: normal;
 }
 
-.product-card-copy p {
+.product-card-copy p,
+.product-price {
+  min-width: 0;
   margin: 0;
   color: var(--navy);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.4;
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 
-/*
-  Product image container:
-  fixed width + aspect ratio keep the image frame square.
-  The image itself is contained rather than cropped.
-*/
+/* Square product image frame */
 
 .product-image-wrap {
   grid-area: photo;
@@ -565,6 +572,7 @@ svg {
   border: 1px solid #eef0f5;
   border-radius: 11px;
   background: #f7f8fb;
+  box-sizing: border-box;
 }
 
 .product-image {
@@ -587,26 +595,24 @@ svg {
 .qty-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-self: start;
+  align-self: start;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   flex-shrink: 0;
 }
 
-.product-card .qty-controls {
+.product-card .qty-controls,
+.product-actions {
   grid-area: actions;
-  align-self: start;
-  justify-self: start;
   min-width: 0;
   margin-top: 2px;
 }
 
 .qty-controls strong {
-  min-width: 15px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.product-card .qty-controls strong {
   min-width: 18px;
+  text-align: center;
   font-size: 13px;
   font-weight: 750;
 }
@@ -614,6 +620,7 @@ svg {
 .qty-controls button {
   width: 32px;
   height: 32px;
+  flex: 0 0 32px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
@@ -629,6 +636,9 @@ svg {
 }
 
 .product-card .qty-controls button {
+  width: 29px;
+  height: 29px;
+  flex-basis: 29px;
   border-color: #dfe3ed;
   border-radius: 9px;
   font-size: 19px;
@@ -1443,8 +1453,6 @@ tr:last-child td {
 
   .product-card {
     grid-template-columns: minmax(0, 1fr) 100px;
-    gap: 10px;
-    padding: 12px;
   }
 
   .product-image-wrap {
@@ -1553,16 +1561,14 @@ tr:last-child td {
     border-radius: 9px;
   }
 
-  .product-card-copy {
-    align-self: end;
-  }
-
-  .product-card-copy h3 {
+  .product-card-copy h3,
+  .product-name {
     font-size: 12px;
     margin-bottom: 6px;
   }
 
-  .product-card-copy p {
+  .product-card-copy p,
+  .product-price {
     font-size: 13px;
   }
 
@@ -1575,6 +1581,7 @@ tr:last-child td {
   .product-card .qty-controls button {
     width: 29px;
     height: 29px;
+    flex-basis: 29px;
   }
 
   .surface {
@@ -1754,11 +1761,13 @@ tr:last-child td {
     width: 104px;
   }
 
-  .product-card-copy h3 {
+  .product-card-copy h3,
+  .product-name {
     font-size: 13px;
   }
 
-  .product-card-copy p {
+  .product-card-copy p,
+  .product-price {
     font-size: 14px;
   }
 
