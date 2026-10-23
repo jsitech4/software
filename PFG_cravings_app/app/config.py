@@ -50,6 +50,8 @@ DATA_DIR = Path(os.getenv('PFG_DATA_DIR', str(ROOT / 'PFG_CRAVINGS_DATA'))).expa
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 for folder in ('database','backups','reports','logs'):
     (DATA_DIR / folder).mkdir(parents=True, exist_ok=True)
+PRODUCT_IMAGE_DIR=DATA_DIR / 'product-images'
+PRODUCT_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 DB_FILE=DATA_DIR / 'database' / 'cravings.sqlite3'
 SECRET_FILE=DATA_DIR / '.server_key'
 if not SECRET_FILE.exists():

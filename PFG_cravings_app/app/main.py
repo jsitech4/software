@@ -12,14 +12,14 @@ from datetime import datetime,timezone,timedelta
 from decimal import Decimal,InvalidOperation
 from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI,HTTPException,Depends,Request,Response
+from fastapi import FastAPI,HTTPException,Depends,Request,Response,UploadFile,File
 from fastapi.responses import FileResponse,StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,Field
 from app.db import connect,initialize,SEED,audit,get_open_session,current_session,lagos_date
 from app.security import hash_secret,verify_secret,pin_fingerprint,secure_token,token_digest,pin_throttle,admin_throttle,timestamp
-from app.config import ROOT,SECURE_COOKIES,PUBLIC_ORIGIN,CORS_ORIGINS,MDNS_ENABLED
+from app.config import ROOT,SECURE_COOKIES,PUBLIC_ORIGIN,CORS_ORIGINS,MDNS_ENABLED,PRODUCT_IMAGE_DIR
 from app.mdns import MdnsAlias
 
 mdns_alias=MdnsAlias()
@@ -43,6 +43,7 @@ if CORS_ORIGINS:
         allow_methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS'],allow_headers=['Content-Type','X-CSRF-Token'],max_age=600)
 ASSETS=ROOT/'web'/'assets'
 app.mount('/assets',StaticFiles(directory=ASSETS),name='assets')
+app.mount('/product-images',StaticFiles(directory=PRODUCT_IMAGE_DIR),name='product-images')
 
 @app.middleware('http')
 async def response_protection(request:Request,call_next):
@@ -101,7 +102,14 @@ def public_url(path:str)->str:
     return f'{PUBLIC_ORIGIN}{path}' if PUBLIC_ORIGIN else path
 
 def product_rows(db):
-    return [dict(r) for r in db.execute('SELECT p.*,c.name category FROM products p JOIN categories c ON c.id=p.category_id WHERE p.archived=0 ORDER BY c.sort_order,p.sort_order,p.name')]
+    products=[]
+    for row in db.execute('SELECT p.*,c.name category FROM products p JOIN categories c ON c.id=p.category_id WHERE p.archived=0 ORDER BY c.sort_order,p.sort_order,p.name'):
+        product=dict(row)
+        # A server-generated filename is used below, never an administrator
+        # supplied path. The static fallback keeps every card visually complete.
+        product['image_url']=f"/product-images/{product['image_filename']}" if product.get('image_filename') else '/assets/image-not-available.svg'
+        products.append(product)
+    return products
 
 def public_session(db):
     s=current_session(db)
@@ -465,6 +473,29 @@ class ProductUpdate(BaseModel):
     available:bool=True
     sort_order:int=0
 
+MAX_PRODUCT_IMAGE_BYTES=5*1024*1024
+IMAGE_TYPES=(
+    (b'\x89PNG\r\n\x1a\n','png'),
+    (b'\xff\xd8\xff','jpg'),
+    (b'RIFF', 'webp'),
+)
+
+def product_image_extension(data:bytes):
+    """Accept only small, browser-safe raster formats based on file bytes."""
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    if data.startswith(b'\xff\xd8\xff'):
+        return 'jpg'
+    if len(data)>=12 and data.startswith(b'RIFF') and data[8:12]==b'WEBP':
+        return 'webp'
+    raise HTTPException(415,'Upload a PNG, JPEG, or WebP image.')
+
+def remove_product_image(filename):
+    if not filename or not re.fullmatch(r'[a-f0-9]{32}\.(?:png|jpg|webp)',filename):
+        return
+    try:(PRODUCT_IMAGE_DIR/filename).unlink(missing_ok=True)
+    except OSError:logging.getLogger(__name__).warning('Could not remove old product image %s',filename)
+
 def parse_price(text):
     if text is None or text=='':return None
     try:
@@ -491,6 +522,40 @@ def edit_product(product_id:int,p:ProductUpdate,user=Depends(require_admin),db=D
     except sqlite3.IntegrityError:raise HTTPException(409,'Product name already exists in that category.')
     audit(db,'admin:'+str(user['id']),'product-edited','product',product_id)
     return {'ok':True}
+
+@app.post('/api/admin/products/{product_id}/image')
+def upload_product_image(product_id:int,image:UploadFile=File(...),user=Depends(require_admin),db=Depends(get_db)):
+    product=db.execute('SELECT image_filename FROM products WHERE id=? AND archived=0',(product_id,)).fetchone()
+    if not product:raise HTTPException(404,'Product not found.')
+    data=image.file.read(MAX_PRODUCT_IMAGE_BYTES+1)
+    if not data:raise HTTPException(422,'Choose an image to upload.')
+    if len(data)>MAX_PRODUCT_IMAGE_BYTES:raise HTTPException(413,'Image must be 5 MB or smaller.')
+    extension=product_image_extension(data)
+    filename=f'{secrets.token_hex(16)}.{extension}'
+    temporary=PRODUCT_IMAGE_DIR/f'.{filename}.uploading'
+    final=PRODUCT_IMAGE_DIR/filename
+    try:
+        temporary.write_bytes(data)
+        temporary.replace(final)
+        db.execute('UPDATE products SET image_filename=? WHERE id=?',(filename,product_id))
+    except OSError as exc:
+        remove_product_image(filename)
+        raise HTTPException(500,'The image could not be saved. Please try again.') from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+        image.file.close()
+    remove_product_image(product['image_filename'])
+    audit(db,'admin:'+str(user['id']),'product-image-uploaded','product',product_id)
+    return {'ok':True,'image_url':f'/product-images/{filename}'}
+
+@app.delete('/api/admin/products/{product_id}/image')
+def remove_assigned_product_image(product_id:int,user=Depends(require_admin),db=Depends(get_db)):
+    product=db.execute('SELECT image_filename FROM products WHERE id=? AND archived=0',(product_id,)).fetchone()
+    if not product:raise HTTPException(404,'Product not found.')
+    db.execute('UPDATE products SET image_filename=NULL WHERE id=?',(product_id,))
+    remove_product_image(product['image_filename'])
+    audit(db,'admin:'+str(user['id']),'product-image-removed','product',product_id)
+    return {'ok':True,'image_url':'/assets/image-not-available.svg'}
 
 @app.delete('/api/admin/products/{product_id}')
 def archive_product(product_id:int,user=Depends(require_admin),db=Depends(get_db)):

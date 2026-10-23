@@ -1,6 +1,7 @@
 /* PFG Cravings | Dependency-free, LAN-ready application client. */
 const app = document.querySelector("#app");
 const N = "/api";
+const PRODUCT_IMAGE_FALLBACK = "/assets/image-not-available.svg";
 const state = {
   bootstrap: null,
   admin: null,
@@ -144,6 +145,36 @@ async function api(path, { method = "GET", body } = {}) {
   }
   return result;
 }
+async function uploadProductImage(productId, file, refresh = true) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024)
+    throw Error("Image must be 5 MB or smaller.");
+  const form = new FormData();
+  form.append("image", file);
+  let response;
+  try {
+    response = await fetch(N + "/admin/products/" + productId + "/image", {
+      method: "POST",
+      headers: { "X-CSRF-Token": state.admin?.csrf || "" },
+      credentials: "same-origin",
+      body: form,
+    });
+  } catch {
+    throw Error(
+      "Cannot reach the server. Check the office network connection.",
+    );
+  }
+  const result = await response
+    .json()
+    .catch(() => ({ detail: "Unexpected server response." }));
+  if (!response.ok)
+    throw Error(result.detail || "Image upload could not be completed.");
+  if (refresh) {
+    toast("Product image saved.");
+    await showAdmin();
+  }
+  return result;
+}
 async function fetchBootstrap() {
   state.bootstrap = await api("/public/bootstrap");
 }
@@ -157,6 +188,7 @@ function topbar() {
   return `<header class="topbar"><div class="topbar-inner">${brand()}<nav class="navlinks"><a href="/" data-link>Order</a><a href="/my-orders" data-link>My Orders</a>${state.buyer && !location.pathname.startsWith("/admin") ? `<button type="button" data-action="buyer-signout">${icon("logout", 15)} Logout</button>` : ""}</nav></div></header>`;
 }
 function buyerShell(html) {
+  requestAnimationFrame(() => decorateProductCards());
   app.innerHTML = `${topbar()}<main class="container">${html}</main><footer class="footer">PFG Cravings · An internal office ordering service</footer>`;
 }
 function buyerAccess() {
@@ -183,6 +215,28 @@ function productOptions() {
   return (state.bootstrap?.products || []).filter(
     (p) => p.category === state.cat,
   );
+}
+function productImage(p, className = "") {
+  const source = p.image_url || PRODUCT_IMAGE_FALLBACK;
+  return `<img class="${className}" src="${escapeHTML(source)}" alt="${escapeHTML(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${PRODUCT_IMAGE_FALLBACK}'">`;
+}
+function productCard(p, session) {
+  return `<article class="product-card"><div class="product-image-wrap">${productImage(p, "product-image")}</div><div class="product-card-copy"><h3>${escapeHTML(p.name)}</h3><p>${p.price_kobo === null ? "Price pending" : money(p.price_kobo)}</p>${!p.available ? '<span class="tiny danger-text">Unavailable</span>' : ""}</div><div class="qty-controls"><button type="button" data-action="qty" data-id="${p.id}" data-delta="-1" ${!state.cart[p.id] ? "disabled" : ""} aria-label="Remove ${escapeHTML(p.name)}">−</button><strong>${state.cart[p.id] || 0}</strong><button type="button" data-action="qty" data-id="${p.id}" data-delta="1" ${p.price_kobo === null || !p.available || session.status !== "open" ? "disabled" : ""} aria-label="Add ${escapeHTML(p.name)}">+</button></div></article>`;
+}
+function decorateProductCards(root = app) {
+  root.querySelectorAll(".product-card").forEach((card) => {
+    if (card.querySelector(".product-image-wrap")) return;
+    const id = card.querySelector("[data-action=qty]")?.dataset.id;
+    const product = (state.bootstrap?.products || []).find(
+      (item) => String(item.id) === String(id),
+    );
+    if (!product) return;
+    card.firstElementChild?.classList.add("product-card-copy");
+    const image = document.createElement("div");
+    image.className = "product-image-wrap";
+    image.innerHTML = productImage(product, "product-image");
+    card.prepend(image);
+  });
 }
 function catalogueCategories() {
   return (state.bootstrap?.categories || []).map((category) => category.name);
@@ -266,8 +320,32 @@ function adminShell(
   title = "Dashboard",
   desc = "Manage incoming refreshment orders.",
 ) {
+  requestAnimationFrame(() => decorateAdminProductImages());
   let route = location.pathname;
   app.innerHTML = `<div class="admin-app ${state.menuOpen ? "menu-open" : ""}"><aside class="sidebar"><div class="brand">${brand()}</div><nav class="sidebar-nav">${NAV.map(([href, ico, text]) => `<a href="${href}" data-link class="${href === route ? "active" : ""}">${icon(ico, 18)}<span>${text}</span></a>`).join("")}</nav><div class="sidebar-bottom"><div class="small muted label">Signed in as <b>${escapeHTML(state.admin?.username || "Admin")}</b></div><button data-action="logout" class="btn secondary sm wide" style="margin-top:12px">${icon("logout", 16)} <span class="label">Sign out</span></button></div></aside><div class="admin-main"><header class="admin-head"><div class="action-row"><button data-action="toggle-menu" class="btn secondary icon-btn mobile-menu" aria-label="Toggle navigation">${icon("menu", 18)}</button><strong style="color:var(--navy);font-size:13px">PFG Cravings <span class="muted">/ Seller</span></strong></div><div class="action-row"><a href="/" data-link class="admin-top-link">Buyer portal ↗</a>${badge("Admin", "navy")}</div></header><main class="admin-content">${titleHead("Seller workspace", escapeHTML(title), escapeHTML(desc))}${body}</main></div></div>`;
+}
+function decorateAdminProductImages(root = app) {
+  const products = state.adminData?.products || [];
+  if (!products.length) return;
+  root.querySelectorAll('[data-form="edit-product"]').forEach((form) => {
+    if (form.querySelector(".product-image-editor")) return;
+    const product = products.find(
+      (item) => String(item.id) === form.dataset.id,
+    );
+    if (!product) return;
+    const editor = document.createElement("div");
+    editor.className = "product-image-editor";
+    editor.innerHTML = `<label class="image-dropzone" data-image-dropzone data-id="${product.id}" tabindex="0">${productImage(product, "admin-product-image")}<span><b>${product.image_filename ? "Replace image" : "Add image"}</b><small>Drop a PNG, JPEG or WebP here, or click to browse.</small><input class="image-file-input" data-product-image-input data-id="${product.id}" type="file" accept="image/png,image/jpeg,image/webp"></span></label><button class="link remove-image" type="button" data-action="remove-product-image" data-id="${product.id}" ${product.image_filename ? "" : "disabled"}>Remove image</button>`;
+    form.prepend(editor);
+  });
+  const addForm = root.querySelector('[data-form="add-product"]');
+  if (addForm && !addForm.querySelector('[name="image"]')) {
+    const field = document.createElement("div");
+    field.className = "field new-product-image";
+    field.innerHTML =
+      '<label>Product image <span class="muted">(optional)</span></label><input name="image" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP; maximum 5 MB.</small>';
+    addForm.insertBefore(field, addForm.lastElementChild);
+  }
 }
 function login() {
   app.innerHTML = `${topbar()}<main class="auth-wrap"><form class="surface auth-card" data-form="login">${brand()}<h2>Seller sign in</h2><p>Sign in to manage products, orders, payments and reports.</p><div class="form-stack"><div class="field"><label for="username">Administrator username</label><input required id="username" name="username" autocomplete="username"></div><div class="field"><label for="password">Password</label><input required id="password" name="password" type="password" autocomplete="current-password"></div><button class="btn wide" type="submit">Sign in securely ${icon("arrow", 17)}</button></div><div class="notice" style="margin-top:20px">First time? Run <b>python -m app.manage setup-admin</b> on the server.</div></form></main>`;
@@ -504,6 +582,26 @@ async function route() {
   }
 }
 window.addEventListener("popstate", route);
+document.addEventListener("dragover", (e) => {
+  const zone = e.target.closest("[data-image-dropzone]");
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.add("is-dragging");
+});
+document.addEventListener("dragleave", (e) => {
+  e.target.closest("[data-image-dropzone]")?.classList.remove("is-dragging");
+});
+document.addEventListener("drop", async (e) => {
+  const zone = e.target.closest("[data-image-dropzone]");
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.remove("is-dragging");
+  try {
+    await uploadProductImage(zone.dataset.id, e.dataTransfer?.files?.[0]);
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
 document.addEventListener("click", async (e) => {
   const anchor = e.target.closest("a[data-link]");
   if (anchor) {
@@ -718,6 +816,20 @@ document.addEventListener("click", async (e) => {
       renderDebtNotice();
       return;
     }
+    if (act === "remove-product-image") {
+      if (
+        !confirm(
+          "Remove this product image? The Image not available fallback will be shown.",
+        )
+      )
+        return;
+      await api("/admin/products/" + el.dataset.id + "/image", {
+        method: "DELETE",
+      });
+      toast("Product image removed.");
+      await showAdmin();
+      return;
+    }
     if (act === "archive-product") {
       if (
         !confirm("Archive this product? Historical orders will be preserved.")
@@ -814,6 +926,14 @@ document.addEventListener("change", async (e) => {
   const el = e.target;
   if (el.id === "paid-claim") {
     state.paid = el.checked;
+    return;
+  }
+  if (el.matches("[data-product-image-input]")) {
+    try {
+      await uploadProductImage(el.dataset.id, el.files?.[0]);
+    } catch (err) {
+      toast(err.message, true);
+    }
     return;
   }
   try {
@@ -984,13 +1104,20 @@ document.addEventListener("submit", async (e) => {
             : !!form.querySelector("[name=available]").checked,
         sort_order: 0,
       };
-      await api(
+      const saved = await api(
         id === "add-product"
           ? "/admin/products"
           : "/admin/products/" + form.dataset.id,
         { method: id === "add-product" ? "POST" : "PATCH", body },
       );
-      toast("Product saved.");
+      if (id === "add-product" && f.image instanceof File && f.image.size) {
+        await uploadProductImage(saved.id, f.image, false);
+      }
+      toast(
+        id === "add-product" && f.image instanceof File && f.image.size
+          ? "Product and image saved."
+          : "Product saved.",
+      );
       await showAdmin();
       return;
     }
