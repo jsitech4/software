@@ -353,9 +353,44 @@ function login() {
 function summaryMetric(label, value, sub = "") {
   return `<div class="surface metric"><div class="metric-label">${label}</div><div class="metric-number">${value}</div><div class="metric-sub">${sub}</div></div>`;
 }
+
 function orderBlock(o) {
-  return `<div class="order-card"><div class="order-card-top"><div><b>${escapeHTML(o.staff_name)}</b> <span class="muted tiny">${escapeHTML(o.reference)}</span></div><div class="action-row">${payBadge(o.payment_status)} ${orderBadge(o.fulfilment_status)}</div></div><div class="order-card-items">${o.items.map((i) => `${escapeHTML(i.name_snapshot)} ×${i.quantity}`).join(" · ")}</div><div class="action-row" style="margin-top:12px;justify-content:space-between"><b>${money(o.total_kobo)}</b><span class="tiny muted">${fmtDate(o.created_at)}</span></div></div>`;
+  return `<div class="order-card">
+    <div class="order-card-top">
+      <div>
+        <b>${escapeHTML(o.staff_name)}</b>
+        <span class="muted tiny">${escapeHTML(o.reference)}</span>
+      </div>
+      <div class="action-row">
+        ${payBadge(o.payment_status)}
+        ${orderBadge(o.fulfilment_status)}
+      </div>
+    </div>
+
+    <div class="order-card-items">
+      ${o.items
+        .map((i) => `${escapeHTML(i.name_snapshot)} ×${i.quantity}`)
+        .join(" · ")}
+    </div>
+
+    ${
+      o.notes?.trim()
+        ? `
+      <div class="note-box" style="margin-top:12px">
+        <b>Customer's additional note</b>
+        <p style="margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${escapeHTML(o.notes)}</p>
+      </div>
+    `
+        : ""
+    }
+
+    <div class="action-row" style="margin-top:12px;justify-content:space-between">
+      <b>${money(o.total_kobo)}</b>
+      <span class="tiny muted">${fmtDate(o.created_at)}</span>
+    </div>
+  </div>`;
 }
+
 function dashboard() {
   const d = state.adminData || { stats: {}, session: {}, recent: [] };
   const s = d.stats || {};
@@ -393,7 +428,16 @@ function ordersView(
 ) {
   let d = state.adminData || { rows: [], total: 0, pages: 1, page: 1 };
   adminShell(
-    `<section class="surface flat">${filtering()}<div class="table-wrap"><table><thead><tr><th>Staff / Reference</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfilment</th><th>Actions</th><th>Date</th></tr></thead><tbody>${d.rows?.length ? d.rows.map((o) => `<tr><td><b>${escapeHTML(o.staff_name)}</b><div class="tiny muted">${escapeHTML(o.reference)}</div></td><td>${o.items.map((i) => `${escapeHTML(i.name_snapshot)} ×${i.quantity}`).join("<br>")}</td><td class="nowrap"><b>${money(o.total_kobo)}</b></td><td>${payBadge(o.payment_status)}</td><td>${orderBadge(o.fulfilment_status)}</td><td>${orderActions(o)}</td><td class="nowrap">${fmtDate(o.created_at)}</td></tr>`).join("") : '<tr><td colspan="7" class="blank">No matching orders.</td></tr>'}</tbody></table></div><div class="order-mobile" style="display:none">${d.rows?.length ? d.rows.map((o) => `${orderBlock(o)}<div style="padding:0 15px 15px">${orderActions(o)}</div>`).join("") : '<div class="blank">No matching orders.</div>'}</div><div class="pagination"><span class="small muted">${d.total} records · Page ${d.page} of ${d.pages}</span><button class="btn secondary sm" data-action="page" data-delta="-1" ${d.page <= 1 ? "disabled" : ""}>Previous</button><button class="btn secondary sm" data-action="page" data-delta="1" ${d.page >= d.pages ? "disabled" : ""}>Next</button></div></section>`,
+    `<section class="surface flat">${filtering()}<div class="table-wrap"><table><thead><tr><th>Staff / Reference</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfilment</th><th>Actions</th><th>Date</th></tr></thead><tbody>${
+      d.rows?.length
+        ? d.rows
+            .map(
+              (o) =>
+                `<tr><td><b>${escapeHTML(o.staff_name)}</b><div class="tiny muted">${escapeHTML(o.reference)}</div></td><td>${o.items.map((i) => `${escapeHTML(i.name_snapshot)} ×${i.quantity}`).join("<br>")}${o.notes?.trim() ? `<div class="note-box"style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere"><b>Customer note</b><br>${escapeHTML(o.notes)}</div>` : ""}</td><td class="nowrap"><b>${money(o.total_kobo)}</b></td><td>${payBadge(o.payment_status)}</td><td>${orderBadge(o.fulfilment_status)}</td><td>${orderActions(o)}</td><td class="nowrap">${fmtDate(o.created_at)}</td></tr>`,
+            )
+            .join("")
+        : '<tr><td colspan="7" class="blank">No matching orders.</td></tr>'
+    }</tbody></table></div><div class="order-mobile" style="display:none">${d.rows?.length ? d.rows.map((o) => `${orderBlock(o)}<div style="padding:0 15px 15px">${orderActions(o)}</div>`).join("") : '<div class="blank">No matching orders.</div>'}</div><div class="pagination"><span class="small muted">${d.total} records · Page ${d.page} of ${d.pages}</span><button class="btn secondary sm" data-action="page" data-delta="-1" ${d.page <= 1 ? "disabled" : ""}>Previous</button><button class="btn secondary sm" data-action="page" data-delta="1" ${d.page >= d.pages ? "disabled" : ""}>Next</button></div></section>`,
     title,
     desc,
   );
